@@ -46,8 +46,8 @@ class User(UserMixin,db.Model):
     with_user_comments:Mapped[List["comments"]] = relationship(back_populates="with_user")
 
 
-with app.app_context():
-    db.create_all()
+# with app.app_context():
+#     db.create_all()
 
 #I am defining one to many relationship here where blog_post table is child
 class BlogPost(db.Model):
@@ -66,22 +66,21 @@ class BlogPost(db.Model):
     # Set up the one-to-many relationship with hi
     with_comments:Mapped[List["comments"]]=relationship(back_populates="with_blog_posts")
 
-with app.app_context():
-    db.create_all()
+# with app.app_context():
+#     db.create_all()
+    
 class comments(db.Model):
     id: Mapped[int] = mapped_column(db.Integer, primary_key=True)
     content: Mapped[str] = mapped_column(db.Text,nullable=False)
 
-    post_id: Mapped[str] = mapped_column(db.Integer, ForeignKey("blog_post.id"))
+    post_id: Mapped[int] = mapped_column(db.Integer, ForeignKey("blog_post.id"))
     with_blog_posts:Mapped["BlogPost"] = relationship(back_populates="with_comments")
 
-    user_id: Mapped[str] = mapped_column(db.Integer,ForeignKey("User.id"))
+    user_id: Mapped[int] = mapped_column(db.Integer,ForeignKey("User.id"))
     with_user: Mapped["User"] = relationship(back_populates="with_user_comments")
     
 
 
-with app.app_context():
-    db.create_all()
 
 @app.route('/')
 def get_all_posts():
@@ -210,8 +209,11 @@ def delete_post(post_id):
     if not current_user.get_id()=="1":
         return login_manager.unauthorized()
     else: 
-        post_to_delete = BlogPost.query.get(post_id)
+        post_to_delete = db.session.execute(db.select(BlogPost).where(BlogPost.id==post_id)).scalar()
         db.session.delete(post_to_delete)
+        comments_to_delete = db.session.execute(db.select(comments).where(comments.post_id==post_id)).scalars()
+        for comm in comments_to_delete:
+            db.session.delete(comm)
         db.session.commit()
         return redirect(url_for('get_all_posts'))
 
