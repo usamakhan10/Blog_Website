@@ -85,7 +85,8 @@ class comments(db.Model):
 @app.route('/')
 def get_all_posts():
     posts = db.session.execute(db.select(BlogPost)).scalars()
-    return render_template("index.html", all_posts=posts)
+    year=date.today().strftime("%Y")
+    return render_template("index.html", all_posts=posts,year=year)
 
 
 @app.route('/register',methods=["GET","POST"])
@@ -208,13 +209,19 @@ def edit_post(post_id):
 def delete_post(post_id):
     if not current_user.get_id()=="1":
         return login_manager.unauthorized()
-    else: 
-        post_to_delete = db.session.execute(db.select(BlogPost).where(BlogPost.id==post_id)).scalar()
-        db.session.delete(post_to_delete)
-        comments_to_delete = db.session.execute(db.select(comments).where(comments.post_id==post_id)).scalars()
-        for comm in comments_to_delete:
-            db.session.delete(comm)
-        db.session.commit()
+    else:
+        with app.app_context(): 
+            with db.session.no_autoflush:
+                comments_to_delete = db.session.execute(db.select(comments).where(comments.post_id==post_id)).scalars()
+            print(comments_to_delete)
+            for comm in comments_to_delete:
+                print(comm)
+                db.session.delete(comm)
+            db.session.commit()
+            post_to_delete = db.session.execute(db.select(BlogPost).where(BlogPost.id==post_id)).scalar()
+            db.session.delete(post_to_delete)
+            db.session.commit()
+            print(post_id)
         return redirect(url_for('get_all_posts'))
 
 
